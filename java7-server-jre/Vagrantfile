@@ -1,0 +1,33 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+PROJECT_NAME = "java7-server-jre-build"
+PROVISION_SCRIPT = <<EOF
+  cd /tmp
+  yum install -y strace rpm-build
+  wget http://cache.ruby-lang.org/pub/ruby/2.1/ruby-2.1.0.tar.gz -O - | tar xzf -
+  cd ruby-2.1.0 && ./configure --disable-install-doc --disable-install-doc --prefix=/usr && make && make install
+  gem install --no-ri --no-rdoc fpm
+EOF
+
+Vagrant.configure("2") do |config|
+  config.vm.define PROJECT_NAME do |config|
+    config.vm.box = "centos-59-x64-vbox4210-nocm"
+    config.vm.hostname = PROJECT_NAME
+    config.vm.box_url = "http://puppet-vagrant-boxes.puppetlabs.com/centos-59-x64-vbox4210-nocm.box"
+    config.vm.network :private_network, ip: "199.199.199.4"
+    config.vm.network "public_network"
+
+    config.vm.provider "virtualbox" do |v|
+      v.customize ["modifyvm", :id, "--cpuexecutioncap", "100"]
+      v.customize ["modifyvm", :id, "--memory", 2048]
+      v.customize ["modifyvm", :id, "--cpus", 2]
+      v.name = PROJECT_NAME
+    end
+
+    config.ssh.forward_agent = true
+
+    config.vm.provision "shell", inline: PROVISION_SCRIPT
+    config.vm.synced_folder ".", "/home/vagrant/#{PROJECT_NAME}", id: "vagrant-root", type: "nfs", nfs_udp: true
+  end
+end
